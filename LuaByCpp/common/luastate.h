@@ -53,7 +53,7 @@ private:
 	void Reset_unuse_stack(ptrdiff_t old_top);
 public:
 	/* Stack¹Øº¯Êý */
-	void Pushcfunction(Lua_CFunction const& f);
+	void Pushcfunction(Lua_CFunction f);
 	void Pushinteger(int integer);
 	void Pushnumber(float number);
 	void Pushboolean(bool b);
@@ -80,7 +80,7 @@ private:
 private:
 	void Setobj(StkId target, StkId value);
 	void Setivalue(StkId target, int integer);
-	void Setfvalue(StkId target, Lua_CFunction const& f);
+	void Setfvalue(StkId target, Lua_CFunction f);
 	void Setfltvalue(StkId target, float number);
 	void Setbvalue(StkId target, bool b);
 	void Setnilvalue(StkId target);

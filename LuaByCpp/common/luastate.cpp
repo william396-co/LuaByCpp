@@ -276,7 +276,7 @@ void LuaState::Reset_unuse_stack(ptrdiff_t old_top)
 	}
 }
 
-void LuaState::Pushcfunction(Lua_CFunction const& f)
+void LuaState::Pushcfunction(Lua_CFunction f)
 {
 	Setfvalue(top, f);
 	Increase_top();
@@ -362,7 +362,8 @@ void LuaState::FreeStack()
 void LuaState::StackInit()
 {
 	stack_size = LUA_STACKSIZE;
-	stack = (StkId)malloc(sizeof(TValue) * stack_size);
+	//stack = (StkId)malloc(sizeof(TValue) * stack_size);
+	stack = new TValue[stack_size];
 	stack_last = stack + LUA_STACKSIZE - LUA_EXTRASPACE;
 	next = previous = nullptr;
 	status = ErrorCode::Lua_Ok;
@@ -438,7 +439,7 @@ void LuaState::Setivalue(StkId target, int integer)
 	target->value_ = integer;
 }
 
-void LuaState::Setfvalue(StkId target, Lua_CFunction const& f)
+void LuaState::Setfvalue(StkId target, Lua_CFunction  f)
 {
 	target->tt_ = LUA_TLCF;
 	SetValue(target->value_, f);

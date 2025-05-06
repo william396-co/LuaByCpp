@@ -41,7 +41,7 @@ void luaL_pushnil(LuaState* L)
 	L->Pushnil();
 }
 
-void luaL_pushcfunction(LuaState* L, Lua_CFunction const& f)
+void luaL_pushcfunction(LuaState* L, Lua_CFunction f)
 {
 	L->Pushcfunction(f);
 }
@@ -56,7 +56,7 @@ struct Calls {
 	StkId func{};
 	int nresults{};
 };
-int f_call(LuaState* L, void* ud) {
+static int f_call(LuaState* L, void* ud) {
 	auto c = static_cast<Calls*>(ud);
 	L->luaD_call(c->func, c->nresults);
 	return ErrorCode::Lua_Ok;
@@ -64,10 +64,9 @@ int f_call(LuaState* L, void* ud) {
 
 int luaL_pcall(LuaState* L, int narg, int nresults)
 {
-	auto status = ErrorCode::Lua_Ok;
 	Calls c{};
 	c.func = L->GetStackTop() - (narg + 1);
-	//status = L->luaD_call(&f_call, &c, L->Savestack(L->Gettop()), 0);
+	auto status = L->luaD_pcall(std::bind(&f_call, L, std::placeholders::_1), &c, L->Savestack(L->GetStackTop()), 0);
 	return status;
 }
 

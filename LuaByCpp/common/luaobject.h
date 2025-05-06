@@ -36,16 +36,16 @@ using Value = std::variant<
 
 // 获取Value对应类型的值
 template<typename T>
-inline T GetValue2T(Value const& v) {
+inline T GetValue2T(Value v) {
 	return std::get<T>(v);
 }
 
 template<typename T>
-inline void SetValue(Value& v, T&& val) {
-	if constexpr (std::is_same_v<T, void*>) {
+inline void SetValue(Value v, T val) {
+	if constexpr (std::is_same_v<T, bool>) {
 		v.emplace<0>(val);
 	}
-	else if constexpr (std::is_same_v<T, bool>) {
+	else if constexpr (std::is_same_v<T, void*>) {
 		v.emplace<1>(val);
 	}
 	else if constexpr (std::is_same_v<T, Lua_Integer>) {
@@ -61,7 +61,7 @@ inline void SetValue(Value& v, T&& val) {
 
 
 struct Lua_TValue {
-	Value value_;
-	int tt_;
+	Value value_{};
+	int tt_{};
 };
 using TValue = Lua_TValue;
