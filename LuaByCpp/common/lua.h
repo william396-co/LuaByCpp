@@ -43,8 +43,8 @@ constexpr auto LUA_STACKSIZE = 2 * LUA_MINSTACK;
 constexpr auto LUA_EXTRASTACK = 5;
 constexpr auto LUA_MAXSTACK = 15000;
 constexpr auto LUA_ERRORSTACK = 200;
-constexpr auto LUA_MULRET = -1;
-constexpr auto LUA_MAXCALLS = 200;
+constexpr auto LUA_MULRET = -1;// 多返回值
+constexpr auto LUA_MAXCALLS = 200;// 最大调用次数
 
 
 // error tips

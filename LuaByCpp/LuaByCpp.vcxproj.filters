@@ -19,9 +19,6 @@
     <Filter Include="common">
       <UniqueIdentifier>{f12d80f0-ac62-4c21-871f-c96ef49e757a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="vm">
-      <UniqueIdentifier>{e77dc7c7-74d3-4518-8068-adb56f6ff244}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

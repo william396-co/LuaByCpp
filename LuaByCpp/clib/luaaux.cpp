@@ -1,5 +1,16 @@
 #include "luaaux.h"
 
+/*
+static void* l_alloc(void* ud, void* ptr, size_t osize, size_t nsize) {
+	
+	if (0 == nsize) {
+		free(ptr);
+		return nullptr;
+	}
+	return realloc(ptr, nsize);
+}
+*/
+
 LuaState* luaL_newstate()
 {
 	return new LuaState();

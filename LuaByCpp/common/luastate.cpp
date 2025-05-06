@@ -2,6 +2,14 @@
 
 #include <cassert>
 
+#define LUA_TRY(c,a) if(_setjmp((c)->b) == 0){ a }
+
+#ifdef _WIN32
+#define LUA_THROW(c) longjmp((c)->b,1)
+#else
+#define LUA_THROW(c) _longjmp((c)->b,1)
+#endif
+
 struct LX {
 	lua_byte extra_[LUA_EXTRASPACE];
 	LuaState l;
@@ -10,6 +18,12 @@ struct LX {
 struct LG {
 	LX l;
 	GlobalState g;
+};
+
+struct LuaLongJmp {
+	struct LuaLongJmp* previous{};
+	jmp_buf b;
+	int status;
 };
 
 LuaState::LuaState()
@@ -49,7 +63,7 @@ void LuaState::luaD_growstack(int size)
 	top = Restorestack(top_diff);
 
 	struct CallInfo* ci;
-	ci = base_ci;
+	ci = &base_ci;
 	while (ci) {
 		int func_diff =  ci->func - old_stack;
 		int top_diff =  ci->top - old_stack;
@@ -61,31 +75,205 @@ void LuaState::luaD_growstack(int size)
 
 void LuaState::luaD_throw(int error)
 {
+	if (errorjmp) {
+		errorjmp->status = error;
+		LUA_THROW(errorjmp);
+	}
+	else {
+		/*if (g->painc) {
+			(*g->painc)(L);
+		}*/
+		abort();
+	}
 }
 
 int LuaState::luaD_rawunprotected(Pfunc const& f, void* ud)
 {
-	return 0;
+	auto old_calls = ncalls;
+	struct LuaLongJmp lj {};
+	lj.previous = errorjmp;
+	lj.status = ErrorCode::Lua_Ok;
+	errorjmp = &lj;
+
+	LUA_TRY(
+		errorjmp,
+		(f)(ud);
+	)
+
+	errorjmp = lj.previous;
+	ncalls = old_calls;
+	return lj.status;
 }
 
+/*
+* prepare for function call
+* if we call a c function, just directly call it
+* if we call a lua function, just prepare for call it
+*/
 int LuaState::luaD_precall(StkId func, int nresult)
 {
+	switch (func->tt_)
+	{
+	case LUA_TLCF:// c function
+	{
+		Lua_CFunction f = GetValue2T<Lua_CFunction>(func->value_);
+		ptrdiff_t func_diff = Savestack(func);
+		func = Restorestack(func_diff);
+
+		Next_ci(func, nresult);
+		int n = (f)(this);
+		assert(ci->func + n < ci->top);
+		luaD_poscall(top - n, n);
+		return 1;
+	}
+	default:
+		break;
+	}
 	return 0;
 }
 
 int LuaState::luaD_poscall(StkId first_result, int nresult)
 {
-	return 0;
+	auto func = ci->func;
+	int nwant = ci->nresults;
+	switch (nwant)
+	{
+	case 0: {
+		top = ci->func;
+		break;
+	}
+	case 1: {
+		if (0 == nresult) {
+			first_result->value_ = nullptr;
+			first_result->tt_ = Lua_TNil;
+		}
+		Setobj(func, first_result);
+		first_result->value_ = nullptr;
+		first_result->tt_ = Lua_TNil;
+
+		top = func + nwant;
+		break;
+	}
+	case LUA_MULRET: {
+		int nres = top - first_result;
+		for (int i = 0; i < nres; ++i) {
+			auto cur = first_result + i;
+			Setobj(func + i, cur);
+			cur->value_ = nullptr;
+			cur->tt_ = Lua_TNil;
+		}
+		top = func + nres;
+		break;
+	}
+	default:
+		if (nwant > nresult) {
+			for (int i = 0; i < nwant; ++i) {
+				if (i < nresult) {
+					auto cur = first_result + i;
+					Setobj(func + i, cur);
+					cur->value_ = nullptr;
+					cur->tt_ = Lua_TNil;
+				}
+				else {
+					auto stk = func + i;
+					stk->tt_ = Lua_TNil;
+				}
+			}
+			top = func + nwant;
+		}
+		else {
+			for (int i = 0; i < nresult; ++i) {
+				if (i < nwant) {
+					auto cur = first_result + i;
+					Setobj(func + i, cur);
+					cur->value_ = nullptr;
+					cur->tt_ = Lua_TNil;
+				}
+				else {
+					auto stk = func + i;
+					stk->value_ = nullptr;
+					stk->tt_ = Lua_TNil;
+				}
+			}
+			top = func + nresult;
+		}
+		break;
+	}
+	auto cur_ci = ci;
+	ci = ci->previous;
+	ci->next = nullptr;
+
+	// because we have not implement gc, so we should free ci manually
+	delete cur_ci;
+	return ErrorCode::Lua_Ok;
 }
 
 int LuaState::luaD_call(StkId func, int nresult)
 {
-	return 0;
+	if (++ncalls > LUA_MAXCALLS) {
+		luaD_throw(0);
+	}
+	if (!luaD_precall(func, nresult)) {
+		// TODO luaV_execute()
+	}
+	ncalls--;
+	return ErrorCode::Lua_Ok;
 }
 
 int LuaState::luaD_pcall(Pfunc f, void* ud, ptrdiff_t oldtop, ptrdiff_t ef)
 {
-	return 0;
+	auto old_ci = ci;
+	ptrdiff_t old_errorfunc = errorfunc;
+	auto status = luaD_rawunprotected(f, ud);
+	if (status != ErrorCode::Lua_Ok) {
+		// because we have not implement gc, so we should free ci manually
+		auto free_ci = ci;
+		while (free_ci) {
+			if (free_ci == old_ci) {
+				free_ci = free_ci->next;
+				continue;
+			}
+
+			auto previous = free_ci->previous;
+			previous->next = nullptr;
+
+			auto next = free_ci->next;
+			delete free_ci;
+			free_ci = next;
+		}
+
+		Reset_unuse_stack(oldtop);
+		ci = old_ci;
+		top = Restorestack(oldtop);
+		Seterrobj(status);
+	}
+	errorfunc = old_errorfunc;
+	return status;
+}
+
+CallInfo* LuaState::Next_ci(StkId func, int nresult)
+{
+	auto new_ci = new CallInfo;
+	new_ci->previous = ci;
+	new_ci->next = ci;
+	new_ci->nresults = nresult;
+	new_ci->callstatus = ErrorCode::Lua_Ok;
+	new_ci->func = func;
+	new_ci->top = top + LUA_MINSTACK;
+	ci = new_ci;
+	return ci;
+}
+
+void LuaState::Reset_unuse_stack(ptrdiff_t old_top)
+{
+	auto new_top = Restorestack(old_top);
+	for (; new_top < top; ++new_top) {
+		if (GetValue2T<void*>(new_top->value_)) {			
+			free(GetValue2T<void*>(new_top->value_));
+			new_top->value_ = nullptr;
+		}
+		new_top->tt_ = Lua_TNil;
+	}
 }
 
 void LuaState::Pushcfunction(Lua_CFunction const& f)
@@ -164,6 +352,13 @@ TValue* LuaState::index2addr(int idx) const
 	return nullptr;
 }
 
+void LuaState::FreeStack()
+{
+	delete stack;
+	stack = stack_last = top = nullptr;
+	stack_size = 0;
+}
+
 void LuaState::StackInit()
 {
 	stack_size = LUA_STACKSIZE;
@@ -181,7 +376,7 @@ void LuaState::StackInit()
 	}
 	top++;
 
-	ci = base_ci;
+	ci = &base_ci;
 	ci->func = stack;
 	ci->top = stack + LUA_MINSTACK;
 	ci->previous = ci->next = nullptr;
@@ -189,6 +384,14 @@ void LuaState::StackInit()
 
 void LuaState::Close()
 {
+	auto ci = &base_ci;
+	while (ci->next) {
+		auto next = ci->next;
+		auto free_ci = ci->next;
+		delete free_ci;
+		ci = next;
+	}	
+	FreeStack();
 }
 
 void LuaState::Increase_top()
@@ -238,7 +441,8 @@ void LuaState::Setivalue(StkId target, int integer)
 void LuaState::Setfvalue(StkId target, Lua_CFunction const& f)
 {
 	target->tt_ = LUA_TLCF;
-	target->value_ = f;
+	SetValue(target->value_, f);
+	//target->value_ = std::move(f);
 }
 
 void LuaState::Setfltvalue(StkId target, float number)
