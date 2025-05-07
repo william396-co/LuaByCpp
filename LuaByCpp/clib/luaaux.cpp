@@ -66,7 +66,8 @@ int luaL_pcall(LuaState* L, int narg, int nresults)
 {
 	Calls c{};
 	c.func = L->GetStackTop() - (narg + 1);
-	auto status = L->luaD_pcall(std::bind(&f_call, L, std::placeholders::_1), &c, L->Savestack(L->GetStackTop()), 0);
+	// TODO bug if here
+	auto status = L->luaD_pcall(std::bind(&f_call,L, std::placeholders::_1), &c, L->Savestack(L->GetStackTop()), 0);
 	return status;
 }
 
@@ -112,6 +113,6 @@ void luaL_pop(LuaState* L)
 
 int luaL_stacksize(LuaState* L)
 {
-	return L->Gettop();
+	return L->StackSize();
 }
 

@@ -65,7 +65,7 @@ public:
 	bool ToBoolean(int idx)const;
 	bool IsNil(int idx)const;
 
-	int Gettop();
+	int StackSize()const;
 	void Pop();
 private:
 	TValue* index2addr(int idx)const;
