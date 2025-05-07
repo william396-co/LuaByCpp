@@ -9,7 +9,7 @@ void luaL_pushinteger(LuaState* L, int integer);
 void luaL_pushnumber(LuaState* L, float number);
 void luaL_pushlightuserdata(LuaState* L, void* userdata);
 void luaL_pushnil(LuaState* L);
-void luaL_pushcfunction(LuaState* L, Lua_CFunction const& f);
+void luaL_pushcfunction(LuaState* L, Lua_CFunction f);
 void luaL_pushboolean(LuaState* L, bool boolean);
 int luaL_pcall(LuaState* L, int narg, int nresults);
 

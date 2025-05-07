@@ -20,8 +20,9 @@ struct CallInfo {
 
 struct GlobalState;
 class LuaState;
+struct LuaLongJmp;
 
-using Pfunc = std::function<int(LuaState* L, void* ud)>;
+using Pfunc = std::function<int(void* ud)>;
 
 class LuaState {
 public:
@@ -45,9 +46,14 @@ public:
 	StkId GetStackTop()const { return top; }
 	StkId Restorestack(ptrdiff_t diff) { top += diff; return top; }
 	ptrdiff_t Savestack(StkId t)const { return stack - t; }
+private:
+	// 产生新的CallInfo
+	CallInfo* Next_ci(StkId func, int nresult);
+	// 释放未使用的栈
+	void Reset_unuse_stack(ptrdiff_t old_top);
 public:
 	/* Stack关函数 */
-	void Pushcfunction(Lua_CFunction const& f);
+	void Pushcfunction(Lua_CFunction f);
 	void Pushinteger(int integer);
 	void Pushnumber(float number);
 	void Pushboolean(bool b);
@@ -63,6 +69,7 @@ public:
 	void Pop();
 private:
 	TValue* index2addr(int idx)const;
+	void FreeStack();
 private:
 	void StackInit();
 	void Close();
@@ -73,7 +80,7 @@ private:
 private:
 	void Setobj(StkId target, StkId value);
 	void Setivalue(StkId target, int integer);
-	void Setfvalue(StkId target, Lua_CFunction const& f);
+	void Setfvalue(StkId target, Lua_CFunction f);
 	void Setfltvalue(StkId target, float number);
 	void Setbvalue(StkId target, bool b);
 	void Setnilvalue(StkId target);
@@ -83,13 +90,13 @@ private:
 	StkId stack_last{};// 从这里开始，栈不能被使用
 	StkId top{};// 栈顶
 	int stack_size{};// 栈的大小
-	struct Lua_Longjmp* errorjmp{};// 保护模式中，要用的结构，当异常抛出时，跳出逻辑
+	LuaLongJmp* errorjmp{};// 保护模式中，要用的结构，当异常抛出时，跳出逻辑
 	int status{ ErrorCode::Lua_Ok };// LuaState的状态
 	LuaState* next{};// 下一个LuaState，通常创建协程时候会产生
 	LuaState* previous{};
-	CallInfo* base_ci{};//和LuaState生命周期一致的函数调用信息
+	CallInfo base_ci{};//和LuaState生命周期一致的函数调用信息
 	CallInfo* ci{};//当前运行的CallInfo
-	GlobalState* l_G {};// GlobalState指针
+	//GlobalState* l_G {};// GlobalState指针
 	ptrdiff_t errorfunc{};// 错误函数位于栈的哪个位置
 	int ncalls{};//进行多少次函数调用
 };
