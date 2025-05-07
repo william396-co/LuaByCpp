@@ -26,6 +26,7 @@ constexpr auto LUA_TCCL = Lua_TFunction | (2 << 4);
 constexpr auto LUA_LNGSTR = Lua_TString | (0 << 4);
 constexpr auto LUA_SHRSTR = Lua_TString | (1 << 4);
 
+#ifdef USE_VARIANT
 using Value = std::variant<
 	bool,    // b boolean
 	void*, // p light userdata
@@ -59,7 +60,15 @@ inline void SetValue(Value v, T val) {
 	}
 }
 
-
+#else
+struct Value {
+	bool b; // boolean
+	void* p;// light userdata
+	Lua_Integer i;
+	Lua_Number n;
+	Lua_CFunction f;
+};
+#endif
 struct Lua_TValue {
 	Value value_{};
 	int tt_{};
