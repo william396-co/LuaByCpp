@@ -116,7 +116,11 @@ int LuaState::luaD_precall(StkId func, int nresult)
 	{
 	case LUA_TLCF:// c function
 	{
+#ifdef USE_VARIANT
 		Lua_CFunction f = GetValue2T<Lua_CFunction>(func->value_);
+#else
+		Lua_CFunction f = func->value_.f;
+#endif
 		ptrdiff_t func_diff = Savestack(func);
 		func = Restorestack(func_diff);
 
@@ -144,11 +148,11 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 	}
 	case 1: {
 		if (0 == nresult) {
-			first_result->value_ = nullptr;
+			first_result->value_.p = nullptr;
 			first_result->tt_ = Lua_TNil;
 		}
 		Setobj(func, first_result);
-		first_result->value_ = nullptr;
+		first_result->value_.p = nullptr;
 		first_result->tt_ = Lua_TNil;
 
 		top = func + nwant;
@@ -159,7 +163,7 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 		for (int i = 0; i < nres; ++i) {
 			auto cur = first_result + i;
 			Setobj(func + i, cur);
-			cur->value_ = nullptr;
+			cur->value_.p = nullptr;
 			cur->tt_ = Lua_TNil;
 		}
 		top = func + nres;
@@ -171,7 +175,7 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 				if (i < nresult) {
 					auto cur = first_result + i;
 					Setobj(func + i, cur);
-					cur->value_ = nullptr;
+					cur->value_.p = nullptr;
 					cur->tt_ = Lua_TNil;
 				}
 				else {
@@ -186,12 +190,12 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 				if (i < nwant) {
 					auto cur = first_result + i;
 					Setobj(func + i, cur);
-					cur->value_ = nullptr;
+					cur->value_.p = nullptr;
 					cur->tt_ = Lua_TNil;
 				}
 				else {
 					auto stk = func + i;
-					stk->value_ = nullptr;
+					stk->value_.p = nullptr;
 					stk->tt_ = Lua_TNil;
 				}
 			}
@@ -268,10 +272,14 @@ void LuaState::Reset_unuse_stack(ptrdiff_t old_top)
 {
 	auto new_top = Restorestack(old_top);
 	for (; new_top < top; ++new_top) {
-		if (GetValue2T<void*>(new_top->value_)) {			
+		if (new_top->value_.p != nullptr) {
+			free(new_top->value_.p);
+			new_top->value_.p = nullptr;
+		}
+		/*if (GetValue2T<void*>(new_top->value_)) {
 			free(GetValue2T<void*>(new_top->value_));
 			new_top->value_ = nullptr;
-		}
+		}*/
 		new_top->tt_ = Lua_TNil;
 	}
 }
@@ -316,7 +324,11 @@ Lua_Integer LuaState::ToIntegerx(int idx, bool& isOk)const
 {
 	auto addr = index2addr(idx);
 	isOk = (addr && addr->tt_ == LUA_NUMINT);
+#ifdef USE_VARIANT
 	return isOk ? GetValue2T<Lua_Integer>(addr->value_) : Lua_Integer{};
+#else
+	return isOk ? addr->value_.i : Lua_Integer{};
+#endif // USE_VARIANT
 }
 
 Lua_Number LuaState::ToNumberx(int idx, bool& isOk)const
@@ -324,13 +336,21 @@ Lua_Number LuaState::ToNumberx(int idx, bool& isOk)const
 	auto addr = index2addr(idx);
 
 	isOk = addr && addr->tt_ == LUA_NUMINT;
+#ifdef USE_VARIANT
 	return isOk ? GetValue2T<Lua_Number>(addr->value_) : Lua_Number{};
+#else
+	return isOk ? addr->value_.n : Lua_Number{};
+#endif
 }
 
 bool LuaState::ToBoolean(int idx) const
 {
 	auto addr = index2addr(idx);
+#ifdef USE_VARIANT
 	return !(addr->tt_ == Lua_TNil || GetValue2T<bool>(addr->value_) == false);
+#else
+	return !(addr->tt_ == Lua_TNil || addr->value_.b == false);
+#endif
 }
 
 bool LuaState::IsNil(int idx) const
@@ -436,26 +456,33 @@ void LuaState::Setobj(StkId target, StkId value)
 void LuaState::Setivalue(StkId target, int integer)
 {
 	target->tt_ = LUA_NUMINT;
+#ifdef USE_VARIANT
 	target->value_ = integer;
+#else
+	target->value_.i = integer;
+#endif
 }
 
 void LuaState::Setfvalue(StkId target, Lua_CFunction  f)
 {
 	target->tt_ = LUA_TLCF;
+#ifdef USE_VARIANT
 	SetValue(target->value_, f);
-	//target->value_ = std::move(f);
+#else
+	target->value_.f = f;
+#endif
 }
 
 void LuaState::Setfltvalue(StkId target, float number)
 {
 	target->tt_ = LUA_NUMFLT;
-	target->value_ = number;
+	target->value_.n = number;
 }
 
 void LuaState::Setbvalue(StkId target, bool b)
 {
 	target->tt_ = Lua_TBoolean;
-	target->value_ = b;
+	target->value_.b = b;
 }
 
 void LuaState::Setnilvalue(StkId target)
@@ -466,5 +493,5 @@ void LuaState::Setnilvalue(StkId target)
 void LuaState::Setpvalue(StkId target, void* p)
 {
 	target->tt_ = Lua_TLightUserData;
-	target->value_ = p;
+	target->value_.p = p;
 }
