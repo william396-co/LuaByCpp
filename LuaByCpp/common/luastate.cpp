@@ -116,11 +116,7 @@ int LuaState::luaD_precall(StkId func, int nresult)
 	{
 	case LUA_TLCF:// c function
 	{
-#ifdef USE_VARIANT
-		Lua_CFunction f = GetValue2T<Lua_CFunction>(func->value_);
-#else
-		Lua_CFunction f = func->value_.f;
-#endif
+		Lua_CFunction f = std::get<Lua_CFunction>(func->value_);
 		ptrdiff_t func_diff = Savestack(func);
 		func = Restorestack(func_diff);
 
@@ -148,11 +144,11 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 	}
 	case 1: {
 		if (0 == nresult) {
-			first_result->value_.p = nullptr;
+			first_result->value_ = nullptr;
 			first_result->tt_ = Lua_TNil;
 		}
 		Setobj(func, first_result);
-		first_result->value_.p = nullptr;
+		first_result->value_ = nullptr;
 		first_result->tt_ = Lua_TNil;
 
 		top = func + nwant;
@@ -163,7 +159,7 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 		for (int i = 0; i < nres; ++i) {
 			auto cur = first_result + i;
 			Setobj(func + i, cur);
-			cur->value_.p = nullptr;
+			cur->value_ = nullptr;
 			cur->tt_ = Lua_TNil;
 		}
 		top = func + nres;
@@ -175,7 +171,7 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 				if (i < nresult) {
 					auto cur = first_result + i;
 					Setobj(func + i, cur);
-					cur->value_.p = nullptr;
+					cur->value_ = nullptr;
 					cur->tt_ = Lua_TNil;
 				}
 				else {
@@ -190,12 +186,12 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 				if (i < nwant) {
 					auto cur = first_result + i;
 					Setobj(func + i, cur);
-					cur->value_.p = nullptr;
+					cur->value_ = nullptr;
 					cur->tt_ = Lua_TNil;
 				}
 				else {
 					auto stk = func + i;
-					stk->value_.p = nullptr;
+					stk->value_ = nullptr;
 					stk->tt_ = Lua_TNil;
 				}
 			}
@@ -272,14 +268,10 @@ void LuaState::Reset_unuse_stack(ptrdiff_t old_top)
 {
 	auto new_top = Restorestack(old_top);
 	for (; new_top < top; ++new_top) {
-		if (new_top->value_.p != nullptr) {
-			free(new_top->value_.p);
-			new_top->value_.p = nullptr;
-		}
-		/*if (GetValue2T<void*>(new_top->value_)) {
-			free(GetValue2T<void*>(new_top->value_));
+		if (std::get<void*>(new_top->value_)) {
+			free(std::get<void*>(new_top->value_));
 			new_top->value_ = nullptr;
-		}*/
+		}
 		new_top->tt_ = Lua_TNil;
 	}
 }
@@ -324,11 +316,7 @@ Lua_Integer LuaState::ToIntegerx(int idx, bool& isOk)const
 {
 	auto addr = index2addr(idx);
 	isOk = (addr && addr->tt_ == LUA_NUMINT);
-#ifdef USE_VARIANT
-	return isOk ? GetValue2T<Lua_Integer>(addr->value_) : Lua_Integer{};
-#else
-	return isOk ? addr->value_.i : Lua_Integer{};
-#endif // USE_VARIANT
+	return isOk ? std::get<Lua_Integer>(addr->value_) : Lua_Integer{};
 }
 
 Lua_Number LuaState::ToNumberx(int idx, bool& isOk)const
@@ -336,21 +324,13 @@ Lua_Number LuaState::ToNumberx(int idx, bool& isOk)const
 	auto addr = index2addr(idx);
 
 	isOk = addr && addr->tt_ == LUA_NUMINT;
-#ifdef USE_VARIANT
-	return isOk ? GetValue2T<Lua_Number>(addr->value_) : Lua_Number{};
-#else
-	return isOk ? addr->value_.n : Lua_Number{};
-#endif
+	return isOk ? std::get<Lua_Number>(addr->value_) : Lua_Number{};
 }
 
 bool LuaState::ToBoolean(int idx) const
 {
 	auto addr = index2addr(idx);
-#ifdef USE_VARIANT
-	return !(addr->tt_ == Lua_TNil || GetValue2T<bool>(addr->value_) == false);
-#else
-	return !(addr->tt_ == Lua_TNil || addr->value_.b == false);
-#endif
+	return !(addr->tt_ == Lua_TNil || std::get<bool>(addr->value_) == false);
 }
 
 bool LuaState::IsNil(int idx) const
@@ -382,7 +362,6 @@ void LuaState::FreeStack()
 void LuaState::StackInit()
 {
 	stack_size = LUA_STACKSIZE;
-	//stack = (StkId)malloc(sizeof(TValue) * stack_size);
 	stack = new TValue[stack_size];
 	stack_last = stack + LUA_STACKSIZE - LUA_EXTRASPACE;
 	next = previous = nullptr;
@@ -417,7 +396,7 @@ void LuaState::Close()
 
 void LuaState::Increase_top()
 {
-	top++;
+	++top;
 	assert(top <= stack_last);
 }
 
@@ -437,7 +416,7 @@ void LuaState::Settop(int idx)
 	}
 }
 
-int LuaState::Gettop()
+int LuaState::StackSize()const
 {
 	return top - (ci->func + 1);
 }
@@ -456,42 +435,35 @@ void LuaState::Setobj(StkId target, StkId value)
 void LuaState::Setivalue(StkId target, int integer)
 {
 	target->tt_ = LUA_NUMINT;
-#ifdef USE_VARIANT
 	target->value_ = integer;
-#else
-	target->value_.i = integer;
-#endif
 }
 
-void LuaState::Setfvalue(StkId target, Lua_CFunction  f)
+void LuaState::Setfvalue(StkId target, Lua_CFunction f)
 {
 	target->tt_ = LUA_TLCF;
-#ifdef USE_VARIANT
-	SetValue(target->value_, f);
-#else
-	target->value_.f = f;
-#endif
+	target->value_ = f;
 }
 
 void LuaState::Setfltvalue(StkId target, float number)
 {
 	target->tt_ = LUA_NUMFLT;
-	target->value_.n = number;
+	target->value_ = number;
 }
 
 void LuaState::Setbvalue(StkId target, bool b)
 {
 	target->tt_ = Lua_TBoolean;
-	target->value_.b = b;
+	target->value_ = b;
 }
 
 void LuaState::Setnilvalue(StkId target)
 {
 	target->tt_ = Lua_TNil;
+	target->value_ = {};
 }
 
 void LuaState::Setpvalue(StkId target, void* p)
 {
 	target->tt_ = Lua_TLightUserData;
-	target->value_.p = p;
+	target->value_ = p;
 }
