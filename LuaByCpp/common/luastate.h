@@ -43,9 +43,9 @@ public:
 	int luaD_call(StkId func, int nresult);
 	int luaD_pcall(Pfunc f, void* ud, ptrdiff_t oldtop, ptrdiff_t ef);
 
-	StkId GetStackTop()const { return top; }
-	StkId Restorestack(ptrdiff_t diff) { top += diff; return top; }
-	ptrdiff_t Savestack(StkId t)const { return stack - t; }
+	StkId GetStackTop()const { return top_; }
+	//StkId Restorestack(ptrdiff_t diff) { top += diff; return top; }
+	//ptrdiff_t Savestack(StkId t)const { return stack - t; }
 private:
 	// 产生新的CallInfo
 	CallInfo* Next_ci(StkId func, int nresult);
@@ -64,6 +64,9 @@ public:
 	Lua_Number ToNumberx(int idxm,bool& isOk)const;
 	bool ToBoolean(int idx)const;
 	bool IsNil(int idx)const;
+
+	StkId RestoreStack(ptrdiff_t top_diff);
+	ptrdiff_t SaveStack(StkId top)const;
 
 	int StackSize()const;
 	void Pop();
@@ -86,19 +89,19 @@ private:
 	void Setnilvalue(StkId target);
 	void Setpvalue(StkId target, void* p);
 private:
-	StkId stack{};// 栈
-	StkId stack_last{};// 从这里开始，栈不能被使用
-	StkId top{};// 栈顶
-	int stack_size{};// 栈的大小
-	LuaLongJmp* errorjmp{};// 保护模式中，要用的结构，当异常抛出时，跳出逻辑
-	int status{ ErrorCode::Lua_Ok };// LuaState的状态
-	LuaState* next{};// 下一个LuaState，通常创建协程时候会产生
-	LuaState* previous{};
-	CallInfo base_ci{};//和LuaState生命周期一致的函数调用信息
-	CallInfo* ci{};//当前运行的CallInfo
+	StkId stack_{};// 栈
+	StkId stack_last_{};// 从这里开始，栈不能被使用
+	StkId top_{};// 栈顶
+	int stack_size_{};// 栈的大小
+	LuaLongJmp* errorjmp_{};// 保护模式中，要用的结构，当异常抛出时，跳出逻辑
+	int status_{ ErrorCode::Lua_Ok };// LuaState的状态
+	LuaState* next_{};// 下一个LuaState，通常创建协程时候会产生
+	LuaState* previous_{};
+	CallInfo base_ci_{};//和LuaState生命周期一致的函数调用信息
+	CallInfo* ci_{};//当前运行的CallInfo
 	//GlobalState* l_G {};// GlobalState指针
-	ptrdiff_t errorfunc{};// 错误函数位于栈的哪个位置
-	int ncalls{};//进行多少次函数调用
+	ptrdiff_t errorfunc_{};// 错误函数位于栈的哪个位置
+	int ncalls_{};//进行多少次函数调用
 };
 
 struct GlobalState {

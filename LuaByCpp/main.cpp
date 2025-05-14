@@ -13,7 +13,7 @@ static int add_op(LuaState* L) {
 void lua_call_example() {
 	auto L = luaL_newstate();
 		
-	luaL_pushcfunction(L, std::bind(& add_op,L));
+	luaL_pushcfunction(L, &add_op);
 	luaL_pushinteger(L, 5);// left
 	luaL_pushinteger(L, 3);// right
 	luaL_pcall(L, 2, 1);

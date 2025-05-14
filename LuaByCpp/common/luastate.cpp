@@ -38,46 +38,46 @@ void LuaState::Seterrobj(int error)
 
 void LuaState::luaD_checkstack(int need)
 {
-	if (top + need > stack_last) {
+	if (top_ + need > stack_last_) {
 		luaD_growstack(need);
 	}
 }
 
 void LuaState::luaD_growstack(int size)
 {
-	if (stack_size > LUA_MAXSTACK) {
+	if (stack_size_ > LUA_MAXSTACK) {
 		luaD_throw(ErrorCode::Lua_ErrErr);
 	}
 
-	auto new_stack_size = stack_size * 2;
-	auto need_size = int(top - stack) + size + LUA_EXTRASTACK;
+	auto new_stack_size = stack_size_ * 2;
+	auto need_size = int(top_ - stack_) + size + LUA_EXTRASTACK;
 	if (new_stack_size < need_size) {
 		new_stack_size = need_size;
 	}
 
-	auto old_stack = stack;
-	stack = (TValue*)realloc(stack, new_stack_size * sizeof(TValue));
-	stack_size = new_stack_size;
-	stack_last = stack + new_stack_size - LUA_EXTRASPACE;
-	auto top_diff = top - old_stack;
-	top = Restorestack(top_diff);
+	auto old_stack = stack_;
+	stack_ = (TValue*)realloc(stack_, new_stack_size * sizeof(TValue));
+	stack_size_ = new_stack_size;
+	stack_last_ = stack_ + new_stack_size - LUA_EXTRASPACE;
+	auto top_diff = top_ - old_stack;
+	top_ = RestoreStack(top_diff);
 
 	struct CallInfo* ci;
-	ci = &base_ci;
+	ci = &base_ci_;
 	while (ci) {
 		int func_diff =  ci->func - old_stack;
 		int top_diff =  ci->top - old_stack;
-		ci->func = Restorestack(func_diff);
-		ci->top = Restorestack(top_diff);
+		ci->func = RestoreStack(func_diff);
+		ci->top = RestoreStack(top_diff);
 		ci = ci->next;
 	}
 }
 
 void LuaState::luaD_throw(int error)
 {
-	if (errorjmp) {
-		errorjmp->status = error;
-		LUA_THROW(errorjmp);
+	if (errorjmp_) {
+		errorjmp_->status = error;
+		LUA_THROW(errorjmp_);
 	}
 	else {
 		/*if (g->painc) {
@@ -89,19 +89,19 @@ void LuaState::luaD_throw(int error)
 
 int LuaState::luaD_rawunprotected(Pfunc const& f, void* ud)
 {
-	auto old_calls = ncalls;
+	auto old_calls = ncalls_;
 	struct LuaLongJmp lj {};
-	lj.previous = errorjmp;
+	lj.previous = errorjmp_;
 	lj.status = ErrorCode::Lua_Ok;
-	errorjmp = &lj;
+	errorjmp_ = &lj;
 
 	LUA_TRY(
-		errorjmp,
+		errorjmp_,
 		(f)(ud);
 	)
 
-	errorjmp = lj.previous;
-	ncalls = old_calls;
+	errorjmp_ = lj.previous;
+	ncalls_ = old_calls;
 	return lj.status;
 }
 
@@ -117,13 +117,13 @@ int LuaState::luaD_precall(StkId func, int nresult)
 	case LUA_TLCF:// c function
 	{
 		Lua_CFunction f = std::get<Lua_CFunction>(func->value_);
-		ptrdiff_t func_diff = Savestack(func);
-		func = Restorestack(func_diff);
+		ptrdiff_t func_diff = SaveStack(func);
+		func = RestoreStack(func_diff);
 
 		Next_ci(func, nresult);
 		int n = (f)(this);
-		assert(ci->func + n < ci->top);
-		luaD_poscall(top - n, n);
+		assert(ci_->func + n < ci_->top);
+		luaD_poscall(top_ - n, n);
 		return 1;
 	}
 	default:
@@ -134,12 +134,12 @@ int LuaState::luaD_precall(StkId func, int nresult)
 
 int LuaState::luaD_poscall(StkId first_result, int nresult)
 {
-	auto func = ci->func;
-	int nwant = ci->nresults;
+	auto func = ci_->func;
+	int nwant = ci_->nresults;
 	switch (nwant)
 	{
 	case 0: {
-		top = ci->func;
+		top_ = ci_->func;
 		break;
 	}
 	case 1: {
@@ -151,18 +151,19 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 		first_result->value_ = nullptr;
 		first_result->tt_ = Lua_TNil;
 
-		top = func + nwant;
+		top_ = func + nwant;
+		debug_info(__PRETTY_FUNCTION__, "&top",top_);
 		break;
 	}
 	case LUA_MULRET: {
-		int nres = top - first_result;
+		int nres = top_ - first_result;
 		for (int i = 0; i < nres; ++i) {
 			auto cur = first_result + i;
 			Setobj(func + i, cur);
 			cur->value_ = nullptr;
 			cur->tt_ = Lua_TNil;
 		}
-		top = func + nres;
+		top_ = func + nres;
 		break;
 	}
 	default:
@@ -179,7 +180,7 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 					stk->tt_ = Lua_TNil;
 				}
 			}
-			top = func + nwant;
+			top_ = func + nwant;
 		}
 		else {
 			for (int i = 0; i < nresult; ++i) {
@@ -195,13 +196,13 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 					stk->tt_ = Lua_TNil;
 				}
 			}
-			top = func + nresult;
+			top_ = func + nresult;
 		}
 		break;
 	}
-	auto cur_ci = ci;
-	ci = ci->previous;
-	ci->next = nullptr;
+	auto cur_ci = ci_;
+	ci_ = ci_->previous;
+	ci_->next = nullptr;
 
 	// because we have not implement gc, so we should free ci manually
 	delete cur_ci;
@@ -210,24 +211,24 @@ int LuaState::luaD_poscall(StkId first_result, int nresult)
 
 int LuaState::luaD_call(StkId func, int nresult)
 {
-	if (++ncalls > LUA_MAXCALLS) {
+	if (++ncalls_ > LUA_MAXCALLS) {
 		luaD_throw(0);
 	}
 	if (!luaD_precall(func, nresult)) {
 		// TODO luaV_execute()
 	}
-	ncalls--;
+	ncalls_--;
 	return ErrorCode::Lua_Ok;
 }
 
 int LuaState::luaD_pcall(Pfunc f, void* ud, ptrdiff_t oldtop, ptrdiff_t ef)
 {
-	auto old_ci = ci;
-	ptrdiff_t old_errorfunc = errorfunc;
+	auto old_ci = ci_;
+	ptrdiff_t old_errorfunc = errorfunc_;
 	auto status = luaD_rawunprotected(f, ud);
 	if (status != ErrorCode::Lua_Ok) {
 		// because we have not implement gc, so we should free ci manually
-		auto free_ci = ci;
+		auto free_ci = ci_;
 		while (free_ci) {
 			if (free_ci == old_ci) {
 				free_ci = free_ci->next;
@@ -243,31 +244,31 @@ int LuaState::luaD_pcall(Pfunc f, void* ud, ptrdiff_t oldtop, ptrdiff_t ef)
 		}
 
 		Reset_unuse_stack(oldtop);
-		ci = old_ci;
-		top = Restorestack(oldtop);
+		ci_ = old_ci;
+		top_ = RestoreStack(oldtop);
 		Seterrobj(status);
 	}
-	errorfunc = old_errorfunc;
+	errorfunc_ = old_errorfunc;
 	return status;
 }
 
 CallInfo* LuaState::Next_ci(StkId func, int nresult)
 {
 	auto new_ci = new CallInfo;
-	new_ci->previous = ci;
-	new_ci->next = ci;
+	new_ci->previous = ci_;
+	new_ci->next = ci_;
 	new_ci->nresults = nresult;
 	new_ci->callstatus = ErrorCode::Lua_Ok;
 	new_ci->func = func;
-	new_ci->top = top + LUA_MINSTACK;
-	ci = new_ci;
-	return ci;
+	new_ci->top = top_ + LUA_MINSTACK;
+	ci_ = new_ci;
+	return ci_;
 }
 
 void LuaState::Reset_unuse_stack(ptrdiff_t old_top)
 {
-	auto new_top = Restorestack(old_top);
-	for (; new_top < top; ++new_top) {
+	auto new_top = RestoreStack(old_top);
+	for (; new_top < top_; ++new_top) {
 		if (std::get<void*>(new_top->value_)) {
 			free(std::get<void*>(new_top->value_));
 			new_top->value_ = nullptr;
@@ -278,37 +279,37 @@ void LuaState::Reset_unuse_stack(ptrdiff_t old_top)
 
 void LuaState::Pushcfunction(Lua_CFunction f)
 {
-	Setfvalue(top, f);
+	Setfvalue(top_, f);
 	Increase_top();
 }
 
 void LuaState::Pushinteger(int integer)
 {
-	Setivalue(top, integer);
+	Setivalue(top_, integer);
 	Increase_top();
 }
 
 void LuaState::Pushnumber(float number)
 {
-	Setfltvalue(top, number);
+	Setfltvalue(top_, number);
 	Increase_top();
 }
 
 void LuaState::Pushboolean(bool b)
 {
-	Setbvalue(top, b);
+	Setbvalue(top_, b);
 	Increase_top();
 }
 
 void LuaState::Pushnil()
 {
-	Setnilvalue(top);
+	Setnilvalue(top_);
 	Increase_top();
 }
 
 void LuaState::Pushlightuserdata(void* p)
 {
-	Setpvalue(top, p);
+	Setpvalue(top_, p);
 	Increase_top();
 }
 
@@ -339,52 +340,65 @@ bool LuaState::IsNil(int idx) const
 	return addr ? addr->tt_ == Lua_TNil : false;
 }
 
+StkId LuaState::RestoreStack(ptrdiff_t top_diff)
+{
+	return stack_ + top_diff;
+}
+
+ptrdiff_t LuaState::SaveStack(StkId top) const
+{
+	return top - stack_;
+}
+
 TValue* LuaState::index2addr(int idx) const
 {
 	if (idx >= 0) {
-		assert(ci->func + idx < ci->top);
-		return ci->func + idx;
+		assert(ci_->func + idx < ci_->top);
+		return ci_->func + idx;
 	}
 	else {
-		assert(top + idx > ci->func);
-		return top + idx;
+		assert(top_ + idx > ci_->func);
+		return top_ + idx;
 	}
 	return nullptr;
 }
 
 void LuaState::FreeStack()
 {
-	delete stack;
-	stack = stack_last = top = nullptr;
-	stack_size = 0;
+	delete stack_;
+	stack_ = stack_last_ = top_ = nullptr;
+	stack_size_ = 0;
 }
 
 void LuaState::StackInit()
 {
-	stack_size = LUA_STACKSIZE;
-	stack = new TValue[stack_size];
-	stack_last = stack + LUA_STACKSIZE - LUA_EXTRASPACE;
-	next = previous = nullptr;
-	status = ErrorCode::Lua_Ok;
-	errorjmp = nullptr;
-	top = stack;
-	errorfunc = 0;
-	ncalls = 0;
+	stack_size_ = LUA_STACKSIZE;
+	stack_ = new TValue[stack_size_];
+	stack_last_ = stack_ + LUA_STACKSIZE - LUA_EXTRASPACE;
+	next_ = previous_ = nullptr;
+	status_ = ErrorCode::Lua_Ok;
+	errorjmp_ = nullptr;
+	top_ = stack_;
+	errorfunc_ = 0;
+	ncalls_ = 0;
+	debug_info(__PRETTY_FUNCTION__, "&top", top_);
+	debug_info(__PRETTY_FUNCTION__, "&stack", stack_);
 	
-	for (int i = 0;i < stack_size;++i) {
-		Setnilvalue(stack + i);
+	for (int i = 0;i < stack_size_;++i) {
+		Setnilvalue(stack_ + i);
 	}
-	top++;
+	++top_;
+	debug_info(__PRETTY_FUNCTION__, "&top", top_);
 
-	ci = &base_ci;
-	ci->func = stack;
-	ci->top = stack + LUA_MINSTACK;
-	ci->previous = ci->next = nullptr;
+	ci_ = &base_ci_;
+	ci_->func = stack_;
+	ci_->top = stack_ + LUA_MINSTACK;
+	ci_->previous = ci_->next = nullptr;
 }
 
 void LuaState::Close()
 {
-	auto ci = &base_ci;
+	auto ci = &base_ci_;
 	while (ci->next) {
 		auto next = ci->next;
 		auto free_ci = ci->next;
@@ -396,29 +410,30 @@ void LuaState::Close()
 
 void LuaState::Increase_top()
 {
-	++top;
-	assert(top <= stack_last);
+	++top_;
+	debug_info(__PRETTY_FUNCTION__, "&top", top_);
+	assert(top_ <= stack_last_);
 }
 
 void LuaState::Settop(int idx)
 {
-	auto curfuc = ci->func;
+	auto curfuc = ci_->func;
 	if (idx >= 0) {
-		assert(idx <= stack_last - (curfuc + 1));
-		while (top < (curfuc + 1) + idx) {
-			Setnilvalue(top++);
+		assert(idx <= stack_last_ - (curfuc + 1));
+		while (top_ < (curfuc + 1) + idx) {
+			Setnilvalue(top_++);
 		}
-		top = curfuc + 1 + idx;
+		top_ = curfuc + 1 + idx;
 	}
 	else {
-		assert(top + idx > curfuc);
-		top += idx;
+		assert(top_ + idx > curfuc);
+		top_ += idx;
 	}
 }
 
 int LuaState::StackSize()const
 {
-	return top - (ci->func + 1);
+	return top_ - (ci_->func + 1);
 }
 
 void LuaState::Pop()
