@@ -65,9 +65,8 @@ static int f_call(LuaState* L, void* ud) {
 int luaL_pcall(LuaState* L, int narg, int nresults)
 {
 	Calls c{};
-	c.func = L->GetStackTop() - (narg + 1);
-	// TODO bug if here
-	auto status = L->luaD_pcall(std::bind(&f_call,L, std::placeholders::_1), &c, L->Savestack(L->GetStackTop()), 0);
+	c.func = L->GetStackTop() - (narg + 1);	
+	auto status = L->luaD_pcall(std::bind(f_call, L, std::placeholders::_1), &c, L->SaveStack(L->GetStackTop()), 0);
 	return status;
 }
 

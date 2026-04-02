@@ -51,3 +51,7 @@ constexpr auto LUA_MAXCALLS = 200;// 最大调用次数
 inline void Lua_Error(std::string const& error) {
 	printf("LUA ERROR:%s\n", error.c_str());
 }
+
+inline void debug_info(std::string const&func, std::string const& info, void* p) {
+	printf("[%s] %s = %p\n", func.c_str(), info.c_str(), p);
+}
