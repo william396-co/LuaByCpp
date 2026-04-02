@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LuaByCpp", "LuaByCpp.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HelloDemo", "..\HelloDemo\HelloDemo.vcxproj", "{1BB737E7-4A0E-4F09-837A-E55B27A7F95D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DeepInLua", "..\DeepInLua\DeepInLua.vcxproj", "{B2CACCD5-FA0D-46D7-90F2-5B901E0F1D57}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{1BB737E7-4A0E-4F09-837A-E55B27A7F95D}.Release|x64.Build.0 = Release|x64
 		{1BB737E7-4A0E-4F09-837A-E55B27A7F95D}.Release|x86.ActiveCfg = Release|Win32
 		{1BB737E7-4A0E-4F09-837A-E55B27A7F95D}.Release|x86.Build.0 = Release|Win32
+		{B2CACCD5-FA0D-46D7-90F2-5B901E0F1D57}.Debug|x64.ActiveCfg = Debug|x64
+		{B2CACCD5-FA0D-46D7-90F2-5B901E0F1D57}.Debug|x64.Build.0 = Debug|x64
+		{B2CACCD5-FA0D-46D7-90F2-5B901E0F1D57}.Debug|x86.ActiveCfg = Debug|Win32
+		{B2CACCD5-FA0D-46D7-90F2-5B901E0F1D57}.Debug|x86.Build.0 = Debug|Win32
+		{B2CACCD5-FA0D-46D7-90F2-5B901E0F1D57}.Release|x64.ActiveCfg = Release|x64
+		{B2CACCD5-FA0D-46D7-90F2-5B901E0F1D57}.Release|x64.Build.0 = Release|x64
+		{B2CACCD5-FA0D-46D7-90F2-5B901E0F1D57}.Release|x86.ActiveCfg = Release|Win32
+		{B2CACCD5-FA0D-46D7-90F2-5B901E0F1D57}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
