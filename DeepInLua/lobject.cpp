@@ -266,7 +266,7 @@ static const char* l_str2d(const char* s, lua_Number* result) {
         const char* pdot = strchr(s, '.');
         if (strlen(s) > L_MAXLENNUM || pdot == NULL)
             return NULL;  /* string too long or no dot; fail */
-        strcpy(buff, s);  /* copy string to buffer */
+        strcpy_s(buff, s);  /* copy string to buffer */
         buff[pdot - s] = lua_getlocaledecpoint();  /* correct decimal point */
         endptr = l_str2dloc(buff, result, mode);  /* try again */
         if (endptr != NULL)

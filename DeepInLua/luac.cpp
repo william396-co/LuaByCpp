@@ -13,11 +13,14 @@
 #include "lstate.h"
 #include "lundump.h"
 
+#ifdef USE_LUAC
+
 static void PrintFunction(const Proto* f, int full);
 #define luaU_print	PrintFunction
 
 #define PROGNAME	"luac"		/* default program name */
 #define OUTPUT		PROGNAME ".out"	/* default output file */
+
 
 static int listing = 0;			/* list bytecodes? */
 static int dumping = 1;			/* dump bytecodes? */
@@ -154,7 +157,6 @@ static int writer(lua_State* L, const void* p, size_t size, void* u)
     return (fwrite(p, size, 1, (FILE*)u) != 1) && (size != 0);
 }
 
-#ifdef USE_LUAC
 static int pmain(lua_State* L)
 {
     int argc = (int)lua_tointeger(L, 1);
@@ -197,7 +199,7 @@ int main(int argc, char* argv[])
     lua_close(L);
     return EXIT_SUCCESS;
 }
-#endif
+
 /*
 ** $Id: luac.c,v 1.76 2018/06/19 01:32:02 lhf Exp $
 ** print bytecodes
@@ -433,6 +435,8 @@ static void PrintDebug(const Proto* f)
     }
 }
 
+
+
 static void PrintFunction(const Proto* f, int full)
 {
     int i, n = f->sizep;
@@ -441,3 +445,4 @@ static void PrintFunction(const Proto* f, int full)
     if (full) PrintDebug(f);
     for (i = 0; i < n; i++) PrintFunction(f->p[i], full);
 }
+#endif

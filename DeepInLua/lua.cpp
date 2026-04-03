@@ -91,6 +91,7 @@
 
 
 
+#ifndef USE_LUAC
 
 static lua_State* globalL = NULL;
 
@@ -537,7 +538,6 @@ static int handle_luainit(lua_State* L) {
 }
 
 
-#ifndef USE_LUAC
 /*
 ** Main body of stand-alone interpreter (to be called in protected mode).
 ** Reads the options and handles them all.
