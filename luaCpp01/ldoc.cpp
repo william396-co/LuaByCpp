@@ -45,7 +45,7 @@ void lua_State::luaD_growstack(int size)
 	}
 
 	TValue* old_stack = stack;
-	stack = (TValue*)luaM_realloc(stack, stack_size, stack_size * sizeof(TValue));
+	stack = (TValue*)luaM_realloc(this, stack, stack_size, stack_size * sizeof(TValue));
 	this->stack_size = stack_size;
 	stack_last = stack + stack_size - LUA_EXTRASTACK;
 	int top_diff = cast(int, top - old_stack);
@@ -90,7 +90,7 @@ int lua_State::luaD_rawunprotected(Pfunc f, void* ud)
 		(*f)(this, ud);
 	)
 
-		errorjmp = lj.previous;
+	errorjmp = lj.previous;
 	ncalls = old_ncalls;
 	return lj.status;
 }
@@ -268,10 +268,13 @@ void lua_State::reset_unuse_stack(ptrdiff_t old_top)
 
 CallInfo* lua_State::next_ci(StkId func, int nresult)
 {
-	//global_State* g = G(this);
-	//struct CallInfo* ci;
-	//ci = (struct CallInfo*)luaM_realloc(nullptr, 0, sizeof(struct CallInfo));
-	auto ci = new CallInfo;
+#if 0
+	global_State* g = G(L);
+	struct CallInfo* ci;
+	ci = (struct CallInfo*)luaM_realloc(L, NULL, 0, sizeof(struct CallInfo));
+#else
+	auto ci = (struct CallInfo*)luaM_realloc(this, nullptr, 0, sizeof(struct CallInfo));
+#endif
 	ci->next = nullptr;
 	ci->previous = this->ci;
 	this->ci->next = ci;

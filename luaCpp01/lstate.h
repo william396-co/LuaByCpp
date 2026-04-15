@@ -43,9 +43,6 @@ public:
 	lua_State(lua_State&&) = delete;
 	lua_State& operator=(lua_State&&) = delete;
 public:
-	// lua mem operation
-	void* luaM_realloc(void* ptr, size_t osize, size_t nsize);
-public:
 	// Lua stack operation
 	void increase_top();
 	void lua_pushcfunction(lua_CFunction f);

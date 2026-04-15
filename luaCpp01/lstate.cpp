@@ -28,12 +28,15 @@ lua_State* lua_newstate(lua_Alloc alloc, void* ud)
 	g->freealloc = alloc;
 	g->panic = {};
 
-	//L = &lg->l.l;
-	lua_State* L = new (&lg->l.l)lua_State();//placement new (include stack_init)
+#if 0
+	L = &lg->l.l;
+#else
+	lua_State* L = new (&lg->l.l)lua_State();//placement new
+#endif
 
 	G(L) = g;
 	g->mainthread = L;
-	//L->stack_init();
+	L->stack_init();
 	return L;
 }
 
@@ -66,8 +69,7 @@ void lua_State::free_stack()
 
 void lua_State::stack_init()
 {
-	//stack = (StkId)luaM_realloc(nullptr, 0, LUA_STACKSIZE * sizeof(TValue));
-	stack = new TValue[LUA_STACKSIZE];
+	stack = (StkId)luaM_realloc(this, nullptr, 0, LUA_STACKSIZE * sizeof(TValue));	
 	stack_size = LUA_STACKSIZE;
 	stack_last = stack + LUA_STACKSIZE - LUA_EXTRASTACK;
 	next = previous = {};
@@ -80,9 +82,9 @@ void lua_State::stack_init()
 	debug_info(__PRETTY_FUNCTION__, "&top", top);
 	debug_info(__PRETTY_FUNCTION__, "&stack", stack);
 
-	/*for (int i = 0; i < stack_size; ++i) {
+	for (int i = 0; i < stack_size; ++i) {
 		(stack + i)->setnilvalue();
-	}*/
+	}
 	++top;
 	debug_info(__PRETTY_FUNCTION__, "&top", top);
 
@@ -94,12 +96,12 @@ void lua_State::stack_init()
 
 lua_State::lua_State()
 {
-	stack_init();
+	//stack_init();
 }
 
 lua_State::~lua_State()
 {
-	free_stack();
+	lua_close(this);
 }
 
 
