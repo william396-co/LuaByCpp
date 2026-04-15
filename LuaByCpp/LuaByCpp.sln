@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DeepInLua", "..\DeepInLua\D
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "luaCpp01", "..\luaCpp01\luaCpp01.vcxproj", "{6C48F153-710F-4520-946D-79ECB780958D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "luaCpp02", "..\luaCpp02\luaCpp02.vcxproj", "{B9C484D6-5CA9-4C64-93B9-7691C5D9CE0E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -51,6 +53,14 @@ Global
 		{6C48F153-710F-4520-946D-79ECB780958D}.Release|x64.Build.0 = Release|x64
 		{6C48F153-710F-4520-946D-79ECB780958D}.Release|x86.ActiveCfg = Release|Win32
 		{6C48F153-710F-4520-946D-79ECB780958D}.Release|x86.Build.0 = Release|Win32
+		{B9C484D6-5CA9-4C64-93B9-7691C5D9CE0E}.Debug|x64.ActiveCfg = Debug|x64
+		{B9C484D6-5CA9-4C64-93B9-7691C5D9CE0E}.Debug|x64.Build.0 = Debug|x64
+		{B9C484D6-5CA9-4C64-93B9-7691C5D9CE0E}.Debug|x86.ActiveCfg = Debug|Win32
+		{B9C484D6-5CA9-4C64-93B9-7691C5D9CE0E}.Debug|x86.Build.0 = Debug|Win32
+		{B9C484D6-5CA9-4C64-93B9-7691C5D9CE0E}.Release|x64.ActiveCfg = Release|x64
+		{B9C484D6-5CA9-4C64-93B9-7691C5D9CE0E}.Release|x64.Build.0 = Release|x64
+		{B9C484D6-5CA9-4C64-93B9-7691C5D9CE0E}.Release|x86.ActiveCfg = Release|Win32
+		{B9C484D6-5CA9-4C64-93B9-7691C5D9CE0E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
